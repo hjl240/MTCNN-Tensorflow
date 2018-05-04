@@ -5,11 +5,15 @@ import cv2
 import os
 import numpy.random as npr
 from utils import IoU
+
 anno_file = "wider_face_train.txt"
 im_dir = "WIDER_train/images"
+
+#训练样本保存的文件夹
 pos_save_dir = "12/positive"
 part_save_dir = "12/part"
 neg_save_dir = '12/negative'
+
 save_dir = "./12"
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
@@ -23,35 +27,38 @@ if not os.path.exists(neg_save_dir):
 f1 = open(os.path.join(save_dir, 'pos_12.txt'), 'w')
 f2 = open(os.path.join(save_dir, 'neg_12.txt'), 'w')
 f3 = open(os.path.join(save_dir, 'part_12.txt'), 'w')
+
 with open(anno_file, 'r') as f:
     annotations = f.readlines()
+
 num = len(annotations)
-print "%d pics in total" % num
+print("%d pics in total" % num)
 p_idx = 0 # positive
 n_idx = 0 # negative
 d_idx = 0 # dont care
 idx = 0
 box_idx = 0
+
 for annotation in annotations:
     annotation = annotation.strip().split(' ')
     #image path
     im_path = annotation[0]
     #boxed change to float type
-    bbox = map(float, annotation[1:])
+    bbox = list(map(float, annotation[1:]))
     #gt
     boxes = np.array(bbox, dtype=np.float32).reshape(-1, 4)
     #load image
     img = cv2.imread(os.path.join(im_dir, im_path + '.jpg'))
     idx += 1
     if idx % 100 == 0:
-        print idx, "images done"
+        print(idx, "images done")
         
     height, width, channel = img.shape
 
     neg_num = 0
-    #1---->50
+    #生成负样本
     while neg_num < 50:
-        #neg_num's size [40,min(width, height) / 2],min_size:40 
+        #负样本图像的尺寸
         size = npr.randint(12, min(width, height) / 2)
         #top_left
         nx = npr.randint(0, width - size)
@@ -60,18 +67,21 @@ for annotation in annotations:
         crop_box = np.array([nx, ny, nx + size, ny + size])
         #cal iou
         Iou = IoU(crop_box, boxes)
-        
-        cropped_im = img[ny : ny + size, nx : nx + size, :]
-        resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
 
         if np.max(Iou) < 0.3:
             # Iou with all gts must below 0.3
             save_file = os.path.join(neg_save_dir, "%s.jpg"%n_idx)
             f2.write("12/negative/%s.jpg"%n_idx + ' 0\n')
+
+            cropped_im = img[ny: ny + size, nx: nx + size, :]
+            resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
+
             cv2.imwrite(save_file, resized_im)
             n_idx += 1
             neg_num += 1
-    #as for 正 part样本
+
+
+    #生成 正 part样本
     for box in boxes:
         # box (x_left, y_top, x_right, y_bottom)
         x1, y1, x2, y2 = box
@@ -84,6 +94,7 @@ for annotation in annotations:
         # in case the ground truth boxes of small faces are not accurate
         if max(w, h) < 40 or x1 < 0 or y1 < 0:
             continue
+        #生成人脸附近区域的负样本
         for i in range(5):
             size = npr.randint(12, min(width, height) / 2)
             # delta_x and delta_y are offsets of (x1, y1)
@@ -105,7 +116,7 @@ for annotation in annotations:
                 f2.write("12/negative/%s.jpg" % n_idx + ' 0\n')
                 cv2.imwrite(save_file, resized_im)
                 n_idx += 1        
-	# generate positive examples and part faces
+	    # generate positive examples and part faces
         for i in range(20):
             # pos and part face size [minsize*0.8,maxsize*1.25]
             size = npr.randint(int(min(w, h) * 0.8), np.ceil(1.25 * max(w, h)))
@@ -145,7 +156,7 @@ for annotation in annotations:
                 cv2.imwrite(save_file, resized_im)
                 d_idx += 1
         box_idx += 1
-	print "%s images done, pos: %s part: %s neg: %s"%(idx, p_idx, d_idx, n_idx)
+    print("%s images done, pos: %s part: %s neg: %s"%(idx, p_idx, d_idx, n_idx))
 f1.close()
 f2.close()
 f3.close()
