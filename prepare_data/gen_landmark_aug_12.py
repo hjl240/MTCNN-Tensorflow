@@ -52,7 +52,7 @@ def GenerateData(ftxt, output,net,argument=False):
     elif net == "ONet":
         size = 48
     else:
-        print 'Net type error'
+        print('Net type error')
         return
     image_id = 0
     f = open(join(OUTPUT,"landmark_%s_aug.txt" %(size)),'w')
@@ -83,7 +83,7 @@ def GenerateData(ftxt, output,net,argument=False):
         if argument:
             idx = idx + 1
             if idx % 100 == 0:
-                print idx, "images done"
+                print(idx, "images done")
             x1, y1, x2, y2 = gt_box
             #gt's width
             gt_w = x2 - x1 + 1
@@ -91,13 +91,13 @@ def GenerateData(ftxt, output,net,argument=False):
             gt_h = y2 - y1 + 1        
             if max(gt_w, gt_h) < 40 or x1 < 0 or y1 < 0:
                 continue
-            #random shift
+            #random shift 数据增强，产生更多的标注数据
             for i in range(10):
                 bbox_size = npr.randint(int(min(gt_w, gt_h) * 0.8), np.ceil(1.25 * max(gt_w, gt_h)))
                 delta_x = npr.randint(-gt_w * 0.2, gt_w * 0.2)
                 delta_y = npr.randint(-gt_h * 0.2, gt_h * 0.2)
-                nx1 = max(x1+gt_w/2-bbox_size/2+delta_x,0)
-                ny1 = max(y1+gt_h/2-bbox_size/2+delta_y,0)
+                nx1 = int(max(x1+gt_w/2-bbox_size/2+delta_x,0))
+                ny1 = int(max(y1+gt_h/2-bbox_size/2+delta_y,0))
                 
                 nx2 = nx1 + bbox_size
                 ny2 = ny1 + bbox_size
@@ -157,10 +157,10 @@ def GenerateData(ftxt, output,net,argument=False):
                         F_landmarks.append(landmark_flipped.reshape(10)) 
                     
             F_imgs, F_landmarks = np.asarray(F_imgs), np.asarray(F_landmarks)
-            #print F_imgs.shape
-            #print F_landmarks.shape
+            #print(F_imgs.shape)
+            #print(F_landmarks.shape)
             for i in range(len(F_imgs)):
-                print image_id
+                print(image_id)
 
                 if np.sum(np.where(F_landmarks[i] <= 0, 1, 0)) > 0:
                     continue
@@ -169,7 +169,7 @@ def GenerateData(ftxt, output,net,argument=False):
                     continue
 
                 cv2.imwrite(join(dstdir,"%d.jpg" %(image_id)), F_imgs[i])
-                landmarks = map(str,list(F_landmarks[i]))
+                landmarks = list(map(str,list(F_landmarks[i])))
                 f.write(join(dstdir,"%d.jpg" %(image_id))+" -2 "+" ".join(landmarks)+"\n")
                 image_id = image_id + 1
             
